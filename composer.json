@@ -1,0 +1,21 @@
+{
+    "name": "jindai/easy-excel",
+    "description": "Simple operation excel package based on phpExcel",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "jindai",
+            "email": "cc520820lk@163.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "JinDai\\EasyExcel\\": "./src"
+        }
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0.0",
+        "phpoffice/phpspreadsheet": "dev-master"
+    }
+}
