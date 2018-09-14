@@ -37,9 +37,19 @@ class ReadExcel implements HandleInterface
         'time' => 'formatTime'
     ];
 
-    public function __construct($fileName)
+    public function __construct($fileName = "")
     {
         $this->fileName = $fileName;
+    }
+
+    public function setFileName($fileName)
+    {
+        if (!is_file($fileName)) {
+            throw new RuntimeException('File "' . $fileName . '" Not Exist');
+        }
+        $this->fileName = $fileName;
+
+        return $this;
     }
 
     public function handle()
@@ -120,6 +130,9 @@ class ReadExcel implements HandleInterface
 
     private function init()
     {
+        if(!$this->fileName) {
+            throw new RuntimeException('please enter fileName');
+        }
         if (!file_exists($this->fileName)) {
             throw new RuntimeException('file ' . $this->fileName . ' not exists');
         }

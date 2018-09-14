@@ -4,7 +4,7 @@ require_once '../vendor/autoload.php';
 
 $easyExcel = new \JinDai\EasyExcel\EasyExcel();
 
-$fileName = "C:/wamp64/www/easyExcel/tests/abc.xlsx";
+$fileName = "C:/wamp64/www/easyExcel/tests/read.xlsx";
 
 class ABC
 {
@@ -25,7 +25,7 @@ $readColumn = [
 ];
 
 try {
-    $data = $easyExcel->setFile($fileName)->read()->setStartRow(2)->setReadColumn($readColumn)->toArray();
+    $data = $easyExcel->setFileName($fileName)->read()->setStartRow(2)->setReadColumn($readColumn)->toArray();
 } catch (\JinDai\EasyExcel\Exceptions\RuntimeException $e) {
     die($e->getMessage());
 }

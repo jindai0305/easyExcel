@@ -6,21 +6,15 @@ use JinDai\EasyExcel\Exceptions\RuntimeException;
 
 class EasyExcel
 {
-    private $fileName, $config, $model;
-    const METHODS_MAP = ['read' => 'ReadExcel'];
+    private $model;
 
-    public function __construct($config = [])
-    {
-        $this->config = $config;
-    }
+    private $fileName;
 
-    public function setFile($fileName)
+    const METHODS_MAP = ['read' => 'ReadExcel', 'write' => 'WriteExcel'];
+
+    public function setFileName($fileName)
     {
-        if (!is_file($fileName)) {
-            throw new RuntimeException('File' . $fileName . 'Not Exist');
-        }
         $this->fileName = $fileName;
-
         return $this;
     }
 
