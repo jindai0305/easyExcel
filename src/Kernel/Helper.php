@@ -39,6 +39,10 @@ trait Helper
         return [$sheetKey, $arrayKey, $closure];
     }
 
+    protected function execClosure($closure,$value) {
+        return is_array($closure) ? call_user_func($closure, $value) : $closure($value);
+    }
+
     protected function getDefaultClosure()
     {
         return function ($item) {

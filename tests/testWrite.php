@@ -4,22 +4,23 @@ require_once '../vendor/autoload.php';
 
 $easyExcel = new \JinDai\EasyExcel\EasyExcel();
 
-$fileName = "C:/wamp64/www/easyExcel/tests/write.csv";
+$fileName = "C:/wamp64/www/easyExcel/tests/write.xls";
 
-//$readColumn = [
-//    ['A', 'order_id', 'strtolower'],
-//    ['B', 'user_name', 'strtoupper'],
-//    ['C', 'account', function ($item) {
-//        return 'hello i\'m 匿名函数' . $item . '这这这这这';
-//    }],
-//    ['D', 'phone', [new ABC(), 'substr']],
-//    ['E', 'time', [new \JinDai\EasyExcel\ExcelFormat(), 'time']]
-//];
+class ABC
+{
+    public function substr($string)
+    {
+        return substr($string, -3);
+    }
+}
 $title = [
-    'A' => ['order_id', '订单id'],
-    'B' => ['name', '昵称'],
-    'C' => ['account', '账号'],
-    'D' => ['phone', '手机号'],
+    'A' => ['order_id', '订单id', 'strtolower'],
+    'B' => ['name', '昵称', 'strtoupper'],
+    'C' => ['account', '账号', function ($item) {
+        return 'hello i\'m 匿名函数' . $item . '这这这这这';
+    }],
+    'D' => ['phone', '手机号', [new ABC(), 'substr']],
+    'E' => ['date', '生成日期', [new \JinDai\EasyExcel\ExcelFormat(), 'time']]
 ];
 
 $data = [
@@ -28,6 +29,7 @@ $data = [
         'name' => 'jindai',
         'account' => 'cc520820lk@163.com',
         'phone' => '15068548568',
+        'date' => Date('Y-m-d')
     ]
 ];
 

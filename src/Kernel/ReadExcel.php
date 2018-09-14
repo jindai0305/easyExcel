@@ -125,7 +125,7 @@ class ReadExcel implements HandleInterface
     private function readOneColumn($sheetKey, $row, $closure)
     {
         $value = is_numeric($sheetKey) ? $this->workSheet->getCellByColumnAndRow($sheetKey, $row)->getValue() : $this->workSheet->getCell($sheetKey . $row)->getValue();
-        return is_array($closure) ? call_user_func($closure, $value) : $closure($value);
+        return $this->execClosure($closure,$value);
     }
 
     private function init()

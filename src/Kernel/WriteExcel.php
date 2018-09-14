@@ -35,6 +35,14 @@ class WriteExcel
         $this->setFileName($fileName);
     }
 
+    public function setFileName($fileName)
+    {
+        $this->path = dirname($fileName);
+        $this->fileName = basename($fileName);
+        $this->ext = $this->getExt($this->fileName);
+        return $this;
+    }
+
     public function setTitle($title)
     {
         if (!$title) {
@@ -42,14 +50,6 @@ class WriteExcel
         }
         $this->title = $title;
         $this->formatTitle($title);
-        return $this;
-    }
-
-    public function setFileName($fileName)
-    {
-        $this->path = dirname($fileName);
-        $this->fileName = basename($fileName);
-        $this->ext = $this->getExt($this->fileName);
         return $this;
     }
 
@@ -70,7 +70,7 @@ class WriteExcel
     public function saveTo()
     {
         $this->createExcelOutput()->save($this->path . '/' . $this->fileName);
-        if(file_exists($this->path.'/'.$this->fileName)) {
+        if (file_exists($this->path . '/' . $this->fileName)) {
             return true;
         }
         throw new RuntimeException('directory has no write permission');
@@ -93,12 +93,14 @@ class WriteExcel
         $this->setExcelShellTitle();
         foreach ($this->data as $item) {
             foreach ($item as $key => $value) {
-                if (!isset($this->sheetMap[$key])) {
+                if (!isset($this->writeSheetMap[$key])) {
                     unset($this->data[$key]);
                     continue;
                 }
-                $this->activeSheet->setCellValue($this->sheetMap[$key] . $this->startRow, $value);
+                list($sheetKey, $closure) = $this->writeSheetMap[$key];
+                $this->activeSheet->setCellValue($sheetKey . $this->startRow, $this->execClosure($closure, $value));
             }
+            $this->startRow++;
         }
         return $this->gerDriver();
     }
@@ -113,11 +115,12 @@ class WriteExcel
 
     private function formatTitle()
     {
-        foreach ($this->title as $sheetKey => list($key, $title)) {
+        foreach ($this->title as $sheetKey => $item) {
+            list($key, $title, $closure) = $this->getFormatItem($item);
             if (isset($this->sheetMap[$key])) {
                 throw new RuntimeException('entered the same key in ' . $sheetKey . ' of ' . $key);
             }
-            $this->writeSheetMap[$key] = $sheetKey;
+            $this->writeSheetMap[$key] = [$sheetKey, $closure];
         }
     }
 
