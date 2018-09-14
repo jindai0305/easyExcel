@@ -2,11 +2,12 @@
 
 namespace JinDai\EasyExcel\Kernel;
 
+use JinDai\EasyExcel\Contracts\HandleInterface;
 use JinDai\EasyExcel\Exceptions\RuntimeException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-class WriteExcel
+class WriteExcel implements HandleInterface
 {
     use Helper;
 
@@ -61,7 +62,7 @@ class WriteExcel
 
     public function download()
     {
-        header('Content-Type: application/vnd.ms-excel');
+        (new HeaderHelper())->{'header' . ucfirst($this->ext)}();
         header('Content-Disposition: attachment;filename="' . $this->fileName . '"');
         header('Cache-Control: max-age=0');
         $this->createExcelOutput()->save("php://output");

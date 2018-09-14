@@ -1,11 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: lik
- * Date: 2018/9/14
- * Time: 14:27
- */
-
 namespace JinDai\EasyExcel\Kernel;
 
 use JinDai\EasyExcel\Exceptions\RuntimeException;

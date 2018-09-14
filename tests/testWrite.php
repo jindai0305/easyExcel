@@ -4,7 +4,7 @@ require_once '../vendor/autoload.php';
 
 $easyExcel = new \JinDai\EasyExcel\EasyExcel();
 
-$fileName = "C:/wamp64/www/easyExcel/tests/write.xls";
+$fileName = "C:/wamp64/www/easyExcel/tests/write.xlsx";
 
 class ABC
 {
