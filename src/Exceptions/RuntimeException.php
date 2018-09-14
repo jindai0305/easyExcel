@@ -2,6 +2,6 @@
 
 namespace JinDai\EasyExcel\Exceptions;
 
-class Exception extends \Exception {
+class RuntimeException extends \Exception {
 
 }
