@@ -2,18 +2,16 @@
 
 namespace JinDai\EasyExcel\Kernel;
 
-use JinDai\EasyExcel\Contracts\HandleInterface;
+use JinDai\EasyExcel\Contracts\HandleAbstract;
 use JinDai\EasyExcel\Exceptions\RuntimeException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-class WriteExcel implements HandleInterface
+class WriteExcel extends HandleAbstract
 {
     use Helper;
 
     private $path;
-
-    private $fileName;
 
     private $ext;
 
@@ -31,18 +29,7 @@ class WriteExcel implements HandleInterface
 
     private $startRow = 1;
 
-    public function __construct($fileName = "")
-    {
-        $this->setFileName($fileName);
-    }
-
-    public function setFileName($fileName)
-    {
-        $this->path = dirname($fileName);
-        $this->fileName = basename($fileName);
-        $this->ext = $this->getExt($this->fileName);
-        return $this;
-    }
+    private $headerHelper;
 
     public function setTitle($title)
     {
@@ -62,7 +49,11 @@ class WriteExcel implements HandleInterface
 
     public function download()
     {
-        (new HeaderHelper())->{'header' . ucfirst($this->ext)}();
+        if (!$this->headerHelper) {
+            $this->headerHelper = new HeaderHelper();
+        }
+        $this->headerHelper->setHeader($this->ext);
+
         header('Content-Disposition: attachment;filename="' . $this->fileName . '"');
         header('Cache-Control: max-age=0');
         $this->createExcelOutput()->save("php://output");
@@ -77,8 +68,18 @@ class WriteExcel implements HandleInterface
         throw new RuntimeException('directory has no write permission');
     }
 
-    public function handle()
+    private function formatExcelShellTitle()
     {
+        foreach ($this->title as $key => $value) {
+            $this->activeSheet->setCellValue($key . $this->startRow, $value[1]);
+        }
+        $this->startRow++;
+    }
+
+    protected function handle()
+    {
+        $this->init();
+
         $this->sheetDriver = new Spreadsheet();
 
         $this->activeSheet = $this->sheetDriver->getActiveSheet();
@@ -86,12 +87,22 @@ class WriteExcel implements HandleInterface
         return $this;
     }
 
-    public function createExcelOutput()
+    private function init()
+    {
+        if (!$this->fileName) {
+            throw new RuntimeException('please enter fileName');
+        }
+        $this->path = dirname($this->fileName);
+        $this->fileName = basename($this->fileName);
+        $this->ext = $this->getExt($this->fileName);
+    }
+
+    private function createExcelOutput()
     {
         if (!count($this->data) || !count($this->title)) {
             throw new RuntimeException('data or title can\'t be empty');
         }
-        $this->setExcelShellTitle();
+        $this->formatExcelShellTitle();
         foreach ($this->data as $item) {
             foreach ($item as $key => $value) {
                 if (!isset($this->writeSheetMap[$key])) {
@@ -103,16 +114,9 @@ class WriteExcel implements HandleInterface
             }
             $this->startRow++;
         }
-        return $this->gerDriver();
+        return $this->getDriverObject();
     }
 
-    private function setExcelShellTitle()
-    {
-        foreach ($this->title as $key => $value) {
-            $this->activeSheet->setCellValue($key . $this->startRow, $value[1]);
-        }
-        $this->startRow++;
-    }
 
     private function formatTitle()
     {
@@ -125,7 +129,7 @@ class WriteExcel implements HandleInterface
         }
     }
 
-    private function gerDriver()
+    private function getDriverObject()
     {
         $this->driver = IOFactory::createWriter($this->sheetDriver, ucfirst($this->ext));
         return $this->driver;

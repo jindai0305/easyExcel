@@ -4,7 +4,7 @@ require_once '../vendor/autoload.php';
 
 $easyExcel = new \JinDai\EasyExcel\EasyExcel();
 
-$fileName = "C:/wamp64/www/easyExcel/tests/read.xlsx";
+$fileName = __DIR__ . "/read.xlsx";
 
 class ABC
 {
@@ -21,12 +21,23 @@ $readColumn = [
         return 'hello i\'m 匿名函数' . $item . '这这这这这';
     }],
     ['D', 'phone', [new ABC(), 'substr']],
-    ['E','time',[new \JinDai\EasyExcel\ExcelFormat(),'time']]
+    ['E', 'time', [new \JinDai\EasyExcel\ExcelFormat(), 'time']]
 ];
 
+$before = memory_get_usage();
+
 try {
-    $data = $easyExcel->setFileName($fileName)->read()->setStartRow(2)->setReadColumn($readColumn)->toArray();
+    $data = $easyExcel->read($fileName)->setReadRow(2, 150)->setReadColumn($readColumn)->setChunkNumber(150)->toForeach();
 } catch (\JinDai\EasyExcel\Exceptions\RuntimeException $e) {
     die($e->getMessage());
 }
-var_dump($data);
+$after = memory_get_usage();
+
+echo 'before----' . round($before / 1024 / 1024, 2) . ' MB' . "</br>";
+echo 'after----' . round($after / 1024 / 1024, 2) . ' MB' . "</br>";
+echo 'between----' . round(($after - $before) / 1024 / 1024, 2) . ' MB' . "</br>";
+
+foreach ($data as $value) {
+    var_dump($value);
+}
+

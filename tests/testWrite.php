@@ -13,6 +13,7 @@ class ABC
         return substr($string, -3);
     }
 }
+
 $title = [
     'A' => ['order_id', '订单id', 'strtolower'],
     'B' => ['name', '昵称', 'strtoupper'],
@@ -25,7 +26,7 @@ $title = [
 
 $data = [
     [
-        'order_id' => 'R45614654',
+        'order_id' => 'R45614650',
         'name' => 'jindai',
         'account' => 'cc520820lk@163.com',
         'phone' => '15068548568',
@@ -33,8 +34,18 @@ $data = [
     ]
 ];
 
+for ($i = 1; $i < 10000; $i++) {
+    array_push($data, [
+        'order_id' => 'R4561465' . $i,
+        'name' => 'jindai' . $i,
+        'account' => 'cc520820lk@163.com' . $i,
+        'phone' => '1506854856' . $i,
+        'date' => Date('Y-m-d')
+    ]);
+}
+
 try {
-    $data = $easyExcel->setFileName($fileName)->write()->setTitle($title)->setData($data)->download();
+    $data = $easyExcel->write($fileName)->setTitle($title)->setData($data)->download();
 } catch (\JinDai\EasyExcel\Exceptions\RuntimeException $e) {
     die($e->getMessage());
 }

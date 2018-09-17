@@ -2,34 +2,34 @@
 
 namespace JinDai\EasyExcel\Kernel;
 
+use JinDai\EasyExcel\Contracts\HandleAbstract;
 use JinDai\EasyExcel\Exceptions\RuntimeException;
-use JinDai\EasyExcel\Contracts\HandleInterface;
-use PhpOffice\PhpSpreadsheet\Reader\Xls;
-use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
-class ReadExcel implements HandleInterface
+class ReadExcel extends HandleAbstract
 {
     use Helper;
 
-    private $fileName;
+    private $chunkNumber = 0;
+
+    private $startRow = 1;
+
+    private $endRow = 0;
+
+    private $readSheetMap = '*';
 
     private $driver;
 
-    private $ext;
+    private $driverMap;
 
-    private $allowExt = ['xls', 'xlsx'];
+    private $filterDriver;
+
+    private $chunkGenerator;
+
+    private $allowExt = ['xls', 'xlsx', 'csv'];
 
     private $data = [];
 
     private $workSheet;
-
-    private $highestRow;
-
-    private $highestColumn;
-
-    private $startRow = 1;
-
-    private $readSheetMap = '*';
 
     private $needAssign = false;
 
@@ -37,74 +37,162 @@ class ReadExcel implements HandleInterface
         'time' => 'formatTime'
     ];
 
-    public function __construct($fileName = "")
+    public function setReadRow($startRow = 1, $endRow = 0)
     {
-        $this->fileName = $fileName;
-    }
-
-    public function setFileName($fileName)
-    {
-        if (!is_file($fileName)) {
-            throw new RuntimeException('File "' . $fileName . '" Not Exist');
+        if ($startRow <= 0) {
+            throw new RuntimeException('startRow must > 0');
         }
-        $this->fileName = $fileName;
-
+        if ($endRow < 0) {
+            throw new RuntimeException('endRow must > 0');
+        }
+        if ($endRow < $startRow) {
+            throw new RuntimeException('endRow must > startRow');
+        }
+        $this->startRow = $startRow;
+        $this->endRow = $endRow;
         return $this;
     }
 
-    public function handle()
+    public function setChunkNumber(int $number)
     {
-        $this->init();
-        if (!$this->driver || $this->driver == null) {
-            throw new RuntimeException('can\'t load driver');
+        if ($number <= 0) {
+            throw new RuntimeException('chunkNum must > 0');
         }
-        $this->driver = $this->driver->load($this->fileName);
-        $this->workSheet = $this->driver->getActiveSheet();
-
-        $this->highestRow = $this->workSheet->getHighestRow();
-
-        if ($this->highestRow < $this->startRow) {
-            throw new RuntimeException('file is empty');
-        }
-
-        $this->highestColumn = $this->workSheet->getHighestColumn();
+        $this->chunkNumber = $number;
         return $this;
     }
 
-    public function setReadColumn($needReadSheetMap)
+    public function setReadColumn($readSheetMap)
     {
-        if ($needReadSheetMap) {
-            $this->readSheetMap = $needReadSheetMap;
+        if ($readSheetMap) {
+            $this->readSheetMap = $readSheetMap;
             $this->formatNeedColumn();
         }
         return $this;
     }
 
-    public function setStartRow($startRow)
+    private function init()
     {
-        $this->startRow = $startRow;
-        return $this;
+        $this->filterParams();
+        $this->formatNeedColumn();
+        $this->initReadDriverObject();
+        $this->initReadBefore();
+        $this->initChunkGenerator();
+        $this->initReadFilterDriver();
+    }
+
+    private function filterParams()
+    {
+        if (!$this->fileName || !file_exists($this->fileName)) {
+            throw new RuntimeException('Please enter an correct file name');
+        }
+        $this->ext = $this->getExt($this->fileName);
+        if (!\in_array($this->ext, $this->allowExt)) {
+            throw new RuntimeException('not a real excel file');
+        }
+    }
+
+    private function formatNeedColumn()
+    {
+        if ($this->readSheetMap === '*') {
+            return;
+        }
+        $this->needAssign = true;
+        !is_array($this->readSheetMap) && $this->readSheetMap = [$this->readSheetMap];
+        $this->readSheetMap = array_map(function ($item) {
+            return $this->getFormatItem($item);
+        }, $this->readSheetMap);
+    }
+
+    private function initReadFilterDriver()
+    {
+        if (!isset($this->filterDriver) || empty($this->filterDriver)) {
+            $this->filterDriver = new ReadFilter();
+        }
+    }
+
+    private function initReadDriverObject()
+    {
+        if (!isset($this->driverMap[$this->ext]) || empty($this->driverMap[$this->ext])) {
+            $className = '\\PhpOffice\\PhpSpreadsheet\\Reader\\' . ucfirst($this->ext);
+            $this->driverMap[$this->ext] = new $className();
+            $this->driverMap[$this->ext]->setReadDataOnly(true);
+        }
+        $this->driver = $this->driverMap[$this->ext];
+        if (!$this->driver || $this->driver == null) {
+            throw new RuntimeException('can\'t load driver');
+        }
+    }
+
+    private function initReadBefore()
+    {
+        $beforeObj = new ReadBefore();
+        $this->driver->setReadFilter($beforeObj);
+        $this->driver->load($this->fileName);
+        if ($this->endRow === 0 || $this->endRow > $beforeObj->maxRow) {
+            $this->endRow = $beforeObj->maxRow;
+        }
+        if ($this->startRow > $this->endRow) {
+            $this->startRow = $this->endRow;
+        }
+    }
+
+    private function initChunkGenerator()
+    {
+        $this->chunkGenerator = new ChunkGenerator($this->startRow, $this->endRow, $this->chunkNumber);
     }
 
     public function toForeach()
     {
-        for ($i = $this->startRow; $i <= $this->highestRow; $i++) {
-            yield $this->eachRow($i);
+        $this->init();
+        foreach ($this->chunkGenerator as $value) {
+            list($start, $end) = $value;
+            $this->beforeEachGenerator($start, $end);
+            for ($i = $start; $i <= $end; $i++) {
+                yield $this->eachRow($i);
+            }
+            $this->afterEachGenerator();
         }
     }
 
     public function toArray()
     {
-        for ($i = $this->startRow; $i <= $this->highestRow; $i++) {
-            $this->data[] = $this->eachRow($i);
+        $this->init();
+        if (count($this->data)) {
+            $this->data = [];
+        }
+        foreach ($this->chunkGenerator as $value) {
+            list($start, $end) = $value;
+            $this->beforeEachGenerator($start, $end);
+            for ($i = $start; $i <= $end; $i++) {
+                $this->data[] = $this->eachRow($i);
+            }
+            $this->afterEachGenerator();
         }
         return $this->data;
     }
 
     public function toJson()
     {
-        $this->toArray();
-        return \json_encode($this->data);
+        return \json_encode($this->toArray());
+    }
+
+    private function beforeEachGenerator($start, $end)
+    {
+        $this->filterDriver->setChunkRow($start, $end);
+        $this->driver->setReadFilter($this->filterDriver);
+        $this->workSheet = $this->driver->load($this->fileName)->getActiveSheet();
+    }
+
+    public function afterEachGenerator()
+    {
+        return;
+    }
+
+    protected function handle()
+    {
+        $this->initReadFilterDriver();
+        $this->filterDriver->setChunkRow($this->startRow, $this->endRow);
     }
 
     private function eachRow($i)
@@ -125,48 +213,6 @@ class ReadExcel implements HandleInterface
     private function readOneColumn($sheetKey, $row, $closure)
     {
         $value = is_numeric($sheetKey) ? $this->workSheet->getCellByColumnAndRow($sheetKey, $row)->getValue() : $this->workSheet->getCell($sheetKey . $row)->getValue();
-        return $this->execClosure($closure,$value);
-    }
-
-    private function init()
-    {
-        if(!$this->fileName) {
-            throw new RuntimeException('please enter fileName');
-        }
-        if (!file_exists($this->fileName)) {
-            throw new RuntimeException('file ' . $this->fileName . ' not exists');
-        }
-        $this->ext = $this->getExt($this->fileName);
-        if (!\in_array($this->ext, $this->allowExt)) {
-            throw new RuntimeException('not a real excel file');
-        }
-        $this->driver = $this->getDriverObject();
-    }
-
-    private function getDriverObject()
-    {
-        return $this->ext === 'xls' ? new Xls() : new Xlsx();
-    }
-
-    private function formatNeedColumn()
-    {
-        $this->needAssign = $this->readSheetMap !== '*';
-        if ($this->needAssign && !is_array($this->readSheetMap)) {
-            $this->readSheetMap = [$this->readSheetMap];
-        }
-        $this->formatReadSheetMap();
-    }
-
-    private function formatReadSheetMap()
-    {
-        if (!$this->needAssign) {
-            return;
-        }
-        $this->readSheetMap = array_map(function ($item) {
-            if (is_array($item)) {
-                return $this->getFormatItem($item);
-            }
-            return [$item, $item, $this->getDefaultClosure()];
-        }, $this->readSheetMap);
+        return $this->execClosure($closure, $value);
     }
 }
